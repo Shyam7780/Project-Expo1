@@ -1,0 +1,110 @@
+import { useEffect, useState } from "react";
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import axios from "axios";
+
+function ClickHandler({ onPick }) {
+  useMapEvents({ click: (e) => onPick([e.latlng.lat, e.latlng.lng], false) });
+  return null;
+}
+
+// Sirf search ya GPS par map ko wahan le jata hai (click par zoom reset nahi hota)
+function FlyTo({ target }) {
+  const map = useMap();
+  useEffect(() => {
+    if (target) map.setView(target, 15);
+  }, [target, map]);
+  return null;
+}
+
+export default function PinMap({ onChange }) {
+  const [pos, setPos] = useState(null);
+  const [flyTarget, setFlyTarget] = useState(null);
+  const [text, setText] = useState("");
+  const [options, setOptions] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const pick = (ll, fly = true) => {
+    setPos(ll);
+    onChange(ll);
+    if (fly) setFlyTarget([...ll]);
+  };
+
+  // Current location (HTML5 Geolocation)
+  const useMyLocation = () => {
+    navigator.geolocation?.getCurrentPosition(
+      (p) => pick([p.coords.latitude, p.coords.longitude]),
+      () => setMsg("Location permission nahi mili.")
+    );
+  };
+
+  useEffect(() => {
+    useMyLocation();
+  }, []);
+
+  // Area/landmark ka naam -> coordinates (Nominatim)
+  const searchPlace = async () => {
+    if (!text.trim()) return;
+    setSearching(true);
+    setMsg("");
+    setOptions([]);
+    try {
+      const { data } = await axios.get("https://nominatim.openstreetmap.org/search", {
+        params: { q: text, format: "json", limit: 5, countrycodes: "in" },
+      });
+      if (data.length === 0) setMsg("Ye jagah nahi mili, naam thoda alag likh ke dekho.");
+      else if (data.length === 1) choose(data[0]);
+      else setOptions(data);
+    } catch {
+      setMsg("Search nahi ho paya, internet check karo.");
+    }
+    setSearching(false);
+  };
+
+  const choose = (place) => {
+    pick([parseFloat(place.lat), parseFloat(place.lon)]);
+    setText(place.display_name.split(",").slice(0, 2).join(","));
+    setOptions([]);
+  };
+
+  return (
+    <div>
+      <div className="place-search">
+        <input
+          type="text"
+          placeholder="Area ya landmark likho (e.g. Raghunath Bazaar, Jammu)"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), searchPlace())}
+        />
+        <button type="button" onClick={searchPlace} disabled={searching}>
+          {searching ? "..." : "Find"}
+        </button>
+        <button type="button" className="secondary" onClick={useMyLocation}>
+          📍 My location
+        </button>
+      </div>
+
+      {msg && <div className="msg" style={{ color: "crimson" }}>{msg}</div>}
+
+      {options.length > 0 && (
+        <ul className="place-options">
+          {options.map((o) => (
+            <li key={o.place_id} onClick={() => choose(o)}>{o.display_name}</li>
+          ))}
+        </ul>
+      )}
+
+      <MapContainer center={[32.7266, 74.857]} zoom={13} style={{ height: 320, borderRadius: 10, marginTop: 10 }}>
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution="&copy; OpenStreetMap contributors"
+        />
+        <ClickHandler onPick={pick} />
+        <FlyTo target={flyTarget} />
+        {pos && <Marker position={pos} />}
+      </MapContainer>
+    </div>
+  );
+}
