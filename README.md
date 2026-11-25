@@ -28,4 +28,5 @@ Notes:
 - AWS keys khali chhodo to images local server/uploads me save hongi.
 - MongoDB: local ya Atlas connection string MONGO_URI me daalo.
 - Pehli baar ML service model download karegi (~350MB).
-"# foundit" 
+"# Project-Expo" 
+"# Project-Expo" 
