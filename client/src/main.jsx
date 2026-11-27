@@ -6,6 +6,7 @@ import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import App from "./App.jsx";
+import { AuthProvider } from "./AuthContext.jsx";
 import "./index.css";
 
 // Leaflet default marker icon fix for Vite
@@ -18,6 +19,8 @@ L.Icon.Default.mergeOptions({
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <BrowserRouter>
-    <App />
+    <AuthProvider>
+      <App />
+    </AuthProvider>
   </BrowserRouter>
 );

@@ -8,7 +8,6 @@ function ClickHandler({ onPick }) {
   return null;
 }
 
-// Sirf search ya GPS par map ko wahan le jata hai (click par zoom reset nahi hota)
 function FlyTo({ target }) {
   const map = useMap();
   useEffect(() => {
@@ -31,7 +30,6 @@ export default function PinMap({ onChange }) {
     if (fly) setFlyTarget([...ll]);
   };
 
-  // Current location (HTML5 Geolocation)
   const useMyLocation = () => {
     navigator.geolocation?.getCurrentPosition(
       (p) => pick([p.coords.latitude, p.coords.longitude]),
@@ -43,7 +41,6 @@ export default function PinMap({ onChange }) {
     useMyLocation();
   }, []);
 
-  // Area/landmark ka naam -> coordinates (Nominatim)
   const searchPlace = async () => {
     if (!text.trim()) return;
     setSearching(true);
@@ -73,20 +70,20 @@ export default function PinMap({ onChange }) {
       <div className="place-search">
         <input
           type="text"
-          placeholder="Area ya landmark likho (e.g. Raghunath Bazaar, Jammu)"
+          placeholder="Area ya landmark likho (e.g. Katra bus stand)"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), searchPlace())}
         />
-        <button type="button" onClick={searchPlace} disabled={searching}>
+        <button type="button" className="btn btn-primary btn-sm" onClick={searchPlace} disabled={searching}>
           {searching ? "..." : "Find"}
         </button>
-        <button type="button" className="secondary" onClick={useMyLocation}>
-          📍 My location
+        <button type="button" className="btn btn-soft btn-sm" onClick={useMyLocation}>
+          📍 Meri location
         </button>
       </div>
 
-      {msg && <div className="msg" style={{ color: "crimson" }}>{msg}</div>}
+      {msg && <div className="alert alert-error">{msg}</div>}
 
       {options.length > 0 && (
         <ul className="place-options">
@@ -96,15 +93,18 @@ export default function PinMap({ onChange }) {
         </ul>
       )}
 
-      <MapContainer center={[32.7266, 74.857]} zoom={13} style={{ height: 320, borderRadius: 10, marginTop: 10 }}>
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution="&copy; OpenStreetMap contributors"
-        />
-        <ClickHandler onPick={pick} />
-        <FlyTo target={flyTarget} />
-        {pos && <Marker position={pos} />}
-      </MapContainer>
+      <div className="map-wrap">
+        <MapContainer center={[32.7266, 74.857]} zoom={13} style={{ height: 320 }}>
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution="&copy; OpenStreetMap contributors"
+          />
+          <ClickHandler onPick={pick} />
+          <FlyTo target={flyTarget} />
+          {pos && <Marker position={pos} />}
+        </MapContainer>
+      </div>
+      <p className="hint">Map par click karke pin ko sahi jagah par laga sakte ho.</p>
     </div>
   );
 }

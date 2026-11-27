@@ -2,14 +2,34 @@ import io
 from fastapi import FastAPI, UploadFile, File
 from pydantic import BaseModel
 from PIL import Image
-from transformers import pipeline
+from ultralytics import YOLO
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 app = FastAPI(title="FoundIT ML Service")
 
-# Pehli baar run par model download hoga
-classifier = pipeline("image-classification", model="google/vit-base-patch16-224")
+# पहली बार रन होने पर yolov8n.pt ऑटोमैटिक डाउनलोड हो जाएगा
+model = YOLO("yolov8n.pt")
+
+SYNONYMS = {
+    "phone": "cell phone cellular telephone mobile smartphone iphone",
+    "iphone": "cell phone cellular telephone mobile smartphone phone",
+    "mobile": "cell phone cellular telephone phone smartphone",
+    "bag": "backpack rucksack handbag purse suitcase",
+    "backpack": "bag rucksack handbag",
+    "wallet": "purse billfold handbag",
+    "laptop": "notebook computer",
+    "watch": "wristwatch analog clock digital watch",
+    "keys": "key padlock",
+    "glasses": "sunglasses spectacles",
+    "earphones": "headphones earbuds headset",
+}
+
+
+def expand(q: str) -> str:
+    words = q.lower().split()
+    extra = [SYNONYMS[w] for w in words if w in SYNONYMS]
+    return " ".join(words + extra)
 
 
 @app.get("/")
@@ -20,10 +40,15 @@ def root():
 @app.post("/tags")
 async def tags(file: UploadFile = File(...)):
     img = Image.open(io.BytesIO(await file.read())).convert("RGB")
-    preds = classifier(img, top_k=5)
+    results = model.predict(source=img, conf=0.25, verbose=False)
+    
     words = []
-    for p in preds:
-        words += [w.strip().lower() for w in p["label"].split(",")]
+    for r in results:
+        for box in r.boxes:
+            class_id = int(box.cls[0])
+            label = model.names[class_id].strip().lower()
+            words.append(label)
+            
     return {"tags": list(dict.fromkeys(words))}
 
 
@@ -41,8 +66,8 @@ class MatchReq(BaseModel):
 def match(req: MatchReq):
     if not req.items:
         return {"results": []}
-    docs = [i.tags for i in req.items]
+    docs = [i.tags.lower() for i in req.items]
     vec = TfidfVectorizer()
-    mat = vec.fit_transform(docs + [req.query.lower()])
+    mat = vec.fit_transform(docs + [expand(req.query)])
     scores = cosine_similarity(mat[-1], mat[:-1])[0]
     return {"results": [{"id": i.id, "score": float(s)} for i, s in zip(req.items, scores)]}
