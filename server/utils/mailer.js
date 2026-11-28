@@ -46,7 +46,12 @@ async function checkAndNotifyAlerts(newItem) {
         .toLowerCase()
         .split(/\s+/)
         .filter((w) => w.length > 2);
-      const isTextMatch = words.some((w) => itemText.includes(w));
+
+      const isTextMatch = words.some((w) => {
+        const root = w.endsWith("s") ? w.slice(0, -1) : w;
+        return itemText.includes(w) || itemText.includes(root);
+      });
+
       const dist = getDistanceKm(alert.lat, alert.lng, itemLat, itemLng);
 
       console.log(
@@ -55,31 +60,4 @@ async function checkAndNotifyAlerts(newItem) {
 
       if (isTextMatch && dist <= alert.radiusKm) {
         await sendEmailViaScript({
-          to: alert.email,
-          subject: `🎉 FoundIT: Aapka "${alert.query}" mil sakta hai!`,
-          html: `
-            <h2>Naya matching item upload hua hai!</h2>
-            <p><b>Aapki search:</b> ${alert.query}</p>
-            <p><b>Description:</b> ${newItem.description || "No description"}</p>
-            ${
-              newItem.imageUrl
-                ? `<img src="${newItem.imageUrl}" width="250" style="border-radius:8px;" />`
-                : ""
-            }
-            <p><a href="${
-              process.env.FRONTEND_URL || "https://project-expo1.vercel.app"
-            }/search">FoundIT par jakar check karein →</a></p>
-          `,
-        });
-
-        alert.notified = true;
-        await alert.save();
-        console.log("✅ Mail sent successfully to:", alert.email);
-      }
-    }
-  } catch (err) {
-    console.error("❌ Alert mail error:", err.message);
-  }
-}
-
-module.exports = { checkAndNotifyAlerts };
+          to
