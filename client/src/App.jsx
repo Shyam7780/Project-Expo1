@@ -33,7 +33,7 @@ function RequireAuth({ children }) {
 function RequirePhone({ children }) {
   const { user } = useAuth();
   const loc = useLocation();
-  if (!user.phoneVerified) return <Navigate to="/verify-phone" state={{ from: loc.pathname }} replace />;
+  if (!user?.phoneVerified) return <Navigate to="/verify-phone" state={{ from: loc.pathname }} replace />;
   return children;
 }
 
@@ -41,7 +41,10 @@ export default function App() {
   const [theme, toggle] = useTheme();
   const { user, logout } = useAuth();
   const { pathname } = useLocation();
-  useEffect(() => window.scrollTo(0, 0), [pathname]);
+  
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
 
   return (
     <>
@@ -73,7 +76,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="container">
+      <main className="container" key={pathname}>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<RequireAuth><Home /></RequireAuth>} />
