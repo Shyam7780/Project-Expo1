@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../AuthContext.jsx";
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -7,7 +7,6 @@ const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 export default function Login() {
   const { user, loginWithGoogle } = useAuth();
   const btn = useRef(null);
-  const nav = useNavigate();
   const loc = useLocation();
   const from = loc.state?.from || "/";
   const [error, setError] = useState("");
@@ -26,11 +25,11 @@ export default function Login() {
             setError("");
             try {
               await loginWithGoogle(resp.credential);
-              nav(from, { replace: true });
+              window.location.replace(from); // <-- यही बदलाव किया है
             } catch (e) {
               setError(e.response?.data?.error || e.message);
+              setBusy(false);
             }
-            setBusy(false);
           },
         });
         window.google.accounts.id.renderButton(btn.current, {
