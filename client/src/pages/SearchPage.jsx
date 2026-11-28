@@ -1,5 +1,6 @@
 import { useState } from "react";
 import api from "../api.js";
+import { useAuth } from "../AuthContext.jsx";
 import PinMap from "../components/PinMap.jsx";
 import ItemCard from "../components/ItemCard.jsx";
 
@@ -15,12 +16,15 @@ const CATEGORIES = [
 ];
 
 export default function SearchPage() {
+  const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [pos, setPos] = useState(null);
   const [radius, setRadius] = useState(5);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [alertSaved, setAlertSaved] = useState(false);
+  const [alertLoading, setAlertLoading] = useState(false);
 
   const search = async () => {
     if (!query.trim()) return setError("Pehle likho ki kya kho gaya hai.");
@@ -28,6 +32,7 @@ export default function SearchPage() {
     setError("");
     setLoading(true);
     setResults(null);
+    setAlertSaved(false);
     try {
       const { data } = await api.post("/api/items/search", {
         query,
@@ -41,6 +46,25 @@ export default function SearchPage() {
       setError(e.response?.data?.error || e.message);
     }
     setLoading(false);
+  };
+
+  const saveAlert = async () => {
+    if (!pos || !query.trim()) return;
+    setAlertLoading(true);
+    setError("");
+    try {
+      await api.post("/api/items/alert", {
+        email: user?.email,
+        query,
+        lat: pos[0],
+        lng: pos[1],
+        radiusKm: Number(radius),
+      });
+      setAlertSaved(true);
+    } catch (e) {
+      setError(e.response?.data?.error || "Alert save nahi ho paya.");
+    }
+    setAlertLoading(false);
   };
 
   return (
@@ -118,7 +142,23 @@ export default function SearchPage() {
               <div className="empty">
                 <div className="empty-emoji">🫥</div>
                 <b>Is area me abhi koi matching item nahi hai</b>
-                <p>Radius badha ke ya dusre shabd likh ke try karo. Baad me phir check karna, koi item upload ho sakta hai.</p>
+                <p>Radius badha ke ya dusre shabd likh ke try karo, ya niche Gmail alert set kar do.</p>
+
+                {alertSaved ? (
+                  <div style={{ marginTop: 14, color: "#16a34a", fontWeight: 600 }}>
+                    ✅ Alert set! Jaise hi matching item aayega, {user?.email} par mail aa jayega.
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    style={{ marginTop: 14 }}
+                    onClick={saveAlert}
+                    disabled={alertLoading}
+                  >
+                    {alertLoading ? "Saving..." : "🔔 Jab item mile to Gmail par notify karo"}
+                  </button>
+                )}
               </div>
             )}
             <div className="grid">

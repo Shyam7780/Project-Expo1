@@ -6,6 +6,8 @@ const Item = require("../models/Item");
 const { saveImage } = require("../utils/storage");
 const { DAYS } = require("../utils/cleanup");
 const { requireAuth, requirePhone } = require("../middleware/auth");
+const Alert = require("../models/Alert");
+const { checkAndNotifyAlerts } = require("../utils/mailer");
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
 const cutoffDate = () => new Date(Date.now() - DAYS * 24 * 60 * 60 * 1000);
@@ -42,6 +44,10 @@ router.post("/", requireAuth, upload.single("image"), async (req, res) => {
       description,
       location: { type: "Point", coordinates: [parseFloat(lng), parseFloat(lat)] },
     });
+
+    // Background me saved alerts check karke Gmail bhejega
+    checkAndNotifyAlerts(item);
+
     res.json(item);
   } catch (err) {
     console.error(err.message);
@@ -87,6 +93,21 @@ router.post("/search", requireAuth, requirePhone, async (req, res) => {
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ error: "Search failed: " + err.message });
+  }
+});
+
+// Gmail Alert save karne ka route
+router.post("/alert", requireAuth, async (req, res) => {
+  try {
+    const { email, query, lat, lng, radiusKm } = req.body;
+    const userEmail = email || req.user?.email;
+    if (!userEmail || !query) {
+      return res.status(400).json({ error: "Email aur query zaroori hai" });
+    }
+    await Alert.create({ email: userEmail, query, lat, lng, radiusKm });
+    res.json({ ok: true, message: "Alert set ho gaya!" });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
