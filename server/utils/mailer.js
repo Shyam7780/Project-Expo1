@@ -1,13 +1,4 @@
-const nodemailer = require("nodemailer");
 const Alert = require("../models/Alert");
-
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
 
 function getDistanceKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -23,11 +14,23 @@ function getDistanceKm(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
+async function sendEmailViaScript({ to, subject, html }) {
+  const res = await fetch(process.env.MAIL_WEBHOOK_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ to, subject, html }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Script Mail error: ${res.status}`);
+  }
+}
+
 async function checkAndNotifyAlerts(newItem) {
   console.log("🔔 Checking alerts for item:", newItem.description);
 
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.log("❌ EMAIL_USER ya EMAIL_PASS Render me set nahi hai!");
+  if (!process.env.MAIL_WEBHOOK_URL) {
+    console.log("❌ MAIL_WEBHOOK_URL Render me set nahi hai!");
     return;
   }
 
@@ -51,8 +54,7 @@ async function checkAndNotifyAlerts(newItem) {
       );
 
       if (isTextMatch && dist <= alert.radiusKm) {
-        await transporter.sendMail({
-          from: `"FoundIT Alert" <${process.env.EMAIL_USER}>`,
+        await sendEmailViaScript({
           to: alert.email,
           subject: `🎉 FoundIT: Aapka "${alert.query}" mil sakta hai!`,
           html: `
@@ -80,4 +82,4 @@ async function checkAndNotifyAlerts(newItem) {
   }
 }
 
-module.exports = { checkAndNotifyAlerts, transporter };
+module.exports = { checkAndNotifyAlerts };
