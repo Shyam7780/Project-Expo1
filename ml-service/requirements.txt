@@ -2,7 +2,6 @@ fastapi
 uvicorn
 python-multipart
 pillow
-torch
-torchvision
-transformers
+numpy
+onnxruntime
 scikit-learn
